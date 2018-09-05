@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bilibili直播间挂机助手
 // @namespace    SeaLoong
-// @version      2.0.8
+// @version      2.0.11
 // @description  Bilibili直播间自动签到，领瓜子，参加抽奖，完成任务，送礼等
 // @author       SeaLoong
 // @homepageURL  https://github.com/SeaLoong/Bilibili-LRHH
@@ -155,6 +155,7 @@
                                         } else if (response.code === -400) {
                                             // 没有需要提示的小电视
                                         } else {
+                                            if (response.msg === 'timeout') return Lottery.Gift.run(roomid);
                                             window.toast('[自动抽奖][礼物抽奖]' + response.msg, 'caution');
                                         }
                                     }, () => {
@@ -379,7 +380,7 @@
         const runTommorrow = (callback) => {
             const t = new Date();
             t.setDate(t.getDate() + 1);
-            t.setHours(0, 0, 30, 0); // 加30s的延迟
+            t.setHours(0, 5, 0, 0); // 加5分钟的延迟
             setTimeout(callback, t.valueOf() - Date.now());
         };
 
@@ -958,17 +959,18 @@
                         if (response.code === 0) {
                             // 签到成功
                             window.toast('[自动签到]' + response.data.text, 'success');
+                            CACHE.sign_ts = ts_ms();
+                            Essential.Cache.save();
                         } else if (response.code === -500) {
                             // 今天已签到过
                         } else {
+                            if (response.msg === 'timeout') return Sign.run();
                             window.toast('[自动签到]' + response.data.text, 'caution');
                         }
-                        CACHE.sign_ts = ts_ms();
-                        Essential.Cache.save();
-                        runTommorrow(Sign.run);
                     }, () => {
                         window.toast('[自动签到]签到失败，请检查网络', 'error');
                     });
+                    runTommorrow(Sign.run);
                 } catch (err) {
                     window.toast('[自动签到]运行时出现异常，已停止', 'error');
                     console.error('[' + NAME + ']', err);
@@ -980,6 +982,7 @@
             getGroups: () => {
                 return API.Group.my_groups().then((response) => {
                     if (response.code === 0) return $.Deferred().resolve(response.data.list);
+                    if (response.msg === 'timeout') return GroupSign.getGroups();
                     window.toast('[自动应援团签到]' + response.msg, 'caution');
                     return $.Deferred().reject();
                 }, () => {
@@ -990,17 +993,23 @@
                 if (i >= list.length) return $.Deferred().resolve();
                 const obj = list[i];
                 return API.Group.sign_in(obj.group_id, obj.owner_uid).then((response) => {
+                    const p = $.Deferred();
                     if (response.code === 0) {
                         if (response.data.status !== 1) {
                             window.toast('[自动应援团签到]应援团(group_id=' + obj.group_id + ',owner_uid=' + obj.owner_uid + ')签到成功，当前勋章亲密度+' + response.data.add_num, 'success');
+                            p.resolve();
+                        } else {
+                            p.reject();
                         }
                     } else {
+                        if (response.msg === 'timeout') return GroupSign.signInList(list, i);
                         window.toast('[自动应援团签到]' + response.msg, 'caution');
+                        p.resolve();
                     }
-                    return GroupSign.signInList(list, i + 1);
+                    return $.when(GroupSign.signInList(list, i + 1), p);
                 }, () => {
                     window.toast('[自动应援团签到]应援团(group_id=' + obj.group_id + ',owner_uid=' + obj.owner_uid + ')签到失败，请检查网络', 'error');
-                    return GroupSign.signInList(list, i + 1);
+                    return $.when(GroupSign.signInList(list, i + 1), $.Deferred().reject());
                 });
             },
             run: () => {
@@ -1016,12 +1025,12 @@
                         }
                     }
                     GroupSign.getGroups().then((list) => {
-                        GroupSign.signInList(list);
-                    }).always(() => {
-                        CACHE.group_sign_ts = ts_ms();
-                        Essential.Cache.save();
-                        runTommorrow(GroupSign.run);
+                        GroupSign.signInList(list).then(() => {
+                            CACHE.group_sign_ts = ts_ms();
+                            Essential.Cache.save();
+                        });
                     });
+                    runTommorrow(GroupSign.run);
                 } catch (err) {
                     window.toast('[自动应援团签到]运行时出现异常，已停止', 'error');
                     console.error('[' + NAME + ']', err);
@@ -1042,11 +1051,11 @@
                             return;
                         }
                     }
-                    Exchange.silver2coin().always(() => {
+                    Exchange.silver2coin().then(() => {
                         CACHE.exchange_ts = ts_ms();
                         Essential.Cache.save();
-                        runTommorrow(Exchange.run);
                     });
+                    runTommorrow(Exchange.run);
                 } catch (err) {
                     window.toast('[银瓜子换硬币]运行时出现异常，已停止', 'error');
                     console.error('[' + NAME + ']', err);
@@ -1063,7 +1072,9 @@
                         // 银瓜子余额不足
                         // window.toast('[银瓜子换硬币]' + response.msg, 'info');
                     } else {
+                        if (response.msg === 'timeout') return Exchange.silver2coin();
                         window.toast('[银瓜子换硬币]' + response.msg, 'caution');
+                        return $.Deferred().reject();
                     }
                 }, () => {
                     window.toast('[银瓜子换硬币]兑换失败，请检查网络', 'error');
@@ -1168,6 +1179,7 @@
                         // 奖励已领取
                         // window.toast('[自动完成任务]' + task_id + '：' + response.msg, 'info');
                     } else {
+                        if (response.msg === 'timeout') return Task.receiveAward(task_id);
                         window.toast('[自动完成任务]' + task_id + '：' + response.msg, 'caution');
                     }
                 }, () => {
@@ -1289,6 +1301,7 @@
                                     Gift.remain_feed -= feed_num * feed;
                                     window.toast('[自动送礼]包裹送礼成功，送出' + feed_num + '个' + v.gift_name, 'success');
                                 } else {
+                                    if (response.msg === 'timeout') return Gift.sendGift(i);
                                     window.toast('[自动送礼]' + response.msg, 'caution');
                                 }
                                 return Gift.sendGift(i + 1);
@@ -1340,6 +1353,11 @@
                 const p = $.Deferred();
                 runUntilSucceed(() => {
                     try {
+                        if ($('.draw-box.gift-left-part').length) {
+                            window.toast('[自动领取瓜子]当前直播间有实物抽奖，暂停领瓜子功能', 'caution');
+                            p.resolve();
+                            return true;
+                        }
                         let treasure_box = $('#gift-control-vm div.treasure-box.p-relative');
                         if (!treasure_box.length) return false;
                         treasure_box = treasure_box.first();
@@ -1459,6 +1477,7 @@
                             Essential.Cache.save();
                             runTommorrow(TreasureBox.run);
                         } else {
+                            if (response.msg === 'timeout') return TreasureBox.run();
                             window.toast('[自动领取瓜子]' + response.msg, 'caution');
                         }
                     });
@@ -1474,8 +1493,8 @@
                     TreasureBox.promise.timer.reject();
                     TreasureBox.promise.timer = undefined;
                 }
-                TreasureBox.DOM.div_timer.hide();
-                TreasureBox.DOM.div_tip.html(htmltext);
+                if (TreasureBox.DOM.div_timer) TreasureBox.DOM.div_timer.hide();
+                if (TreasureBox.DOM.div_tip) TreasureBox.DOM.div_tip.html(htmltext);
             },
             getAward: (captcha, cnt = 0) => {
                 if (!CONFIG.AUTO_TREASUREBOX) return $.Deferred().reject();
@@ -1510,6 +1529,7 @@
                             window.toast('[自动领取瓜子]访问被拒绝，您的帐号可能已经被封禁，已停止', 'error');
                             return $.Deferred().reject();
                         default: // 其他错误
+                            if (response.msg === 'timeout') return TreasureBox.getAward(captcha, cnt);
                             window.toast('[自动领取瓜子]' + response.msg, 'caution');
                             return $.Deferred().reject();
                     }
@@ -1558,6 +1578,7 @@
                             TreasureBox.DOM.image.attr('src', response.data.img);
                             return p;
                         } else {
+                            if (response.msg === 'timeout') return TreasureBox.captcha.calc();
                             window.toast('[自动领取瓜子]' + response.msg, 'caution');
                             window.toast('[自动领取瓜子]加载验证码失败，已停止', 'error');
                         }
@@ -1685,6 +1706,7 @@
                             if (response.code === 0 && response.data.hasOwnProperty('guard')) {
                                 return Lottery.Guard.join(roomid, response.data.guard);
                             } else {
+                                if (response.msg === 'timeout') return Lottery.Guard.run();
                                 window.toast('[自动抽奖][总督领奖](roomid=' + roomid + ')' + response.msg, 'caution');
                             }
                         }, () => {
@@ -1706,6 +1728,7 @@
                                 window.toast('[自动抽奖][总督领奖]领取(roomid=' + roomid + ',id=' + obj.id + ')成功', 'success');
                                 window.toast('[自动抽奖][总督领奖]' + response.data.message, 'success');
                             } else {
+                                if (response.msg === 'timeout') return Lottery.Guard.join(roomid, guard, i);
                                 window.toast('[自动抽奖][总督领奖](roomid=' + roomid + ',id=' + obj.id + ')' + response.msg, 'caution');
                             }
                             return Lottery.Guard.join(roomid, guard, i + 1);
@@ -1722,16 +1745,20 @@
                 ignore_keyword: ['test', 'encrypt', '测试', '钓鱼', '加密', '炸鱼'],
                 run: () => {
                     try {
-                        return Lottery.MaterialObject.check().then((aid) => {
+                        if (CACHE.materialobject_ts) {
+                            const diff = ts_ms() - new Date(CACHE.materialobject_ts);
+                            if (diff < (CONFIG.AUTO_LOTTERY_CONFIG.MATERIAL_OBJECT_LOTTERY_CONFIG.CHECK_INTERVAL * 60e3 || 600e3)) {
+                                setTimeout(Lottery.MaterialObject.run, diff);
+                                return;
+                            }
+                        }
+                        Lottery.MaterialObject.check().then((aid) => {
                             // aid有效
                             CACHE.last_aid = aid;
+                            CACHE.materialobject_ts = ts_ms();
                             Essential.Cache.save();
                         }).always(() => {
-                            const p = $.Deferred();
-                            p.then(() => Lottery.MaterialObject.run());
-                            setTimeout(() => {
-                                p.resolve();
-                            }, CONFIG.AUTO_LOTTERY_CONFIG.MATERIAL_OBJECT_LOTTERY_CONFIG.CHECK_INTERVAL * 60e3 || 600e3);
+                            setTimeout(Lottery.MaterialObject.run, CONFIG.AUTO_LOTTERY_CONFIG.MATERIAL_OBJECT_LOTTERY_CONFIG.CHECK_INTERVAL * 60e3 || 600e3);
                         });
                     } catch (err) {
                         window.toast('[自动抽奖][实物抽奖]运行时出现异常', 'error');
@@ -1740,15 +1767,13 @@
                     return $.Deferred().reject();
                 },
                 check: (aid, valid = false) => {
-                    aid = parseInt(aid || (CACHE.last_aid + 1), 10);
-                    if (isNaN(aid)) aid = 163;
+                    aid = parseInt(aid || (CACHE.last_aid), 10);
+                    if (isNaN(aid)) aid = 166;
                     DEBUG('Lottery.MaterialObject.check: aid:', aid);
                     return API.Lottery.MaterialObject.getStatus(aid).then((response) => {
                         if (response.code === 0) {
-                            CACHE.last_aid = aid;
-                            Essential.Cache.save();
                             if (CONFIG.AUTO_LOTTERY_CONFIG.MATERIAL_OBJECT_LOTTERY_CONFIG.IGNORE_QUESTIONABLE_LOTTERY && Lottery.MaterialObject.ignore_keyword.some(v => response.data.title.toLowerCase().indexOf(v) > -1)) {
-                                window.toast('[自动抽奖][实物抽奖]忽略抽奖(aid=' + aid + ')', 'caution');
+                                window.toast('[自动抽奖][实物抽奖]忽略抽奖(aid=' + aid + ')', 'info');
                                 return Lottery.MaterialObject.check(aid + 1, true);
                             } else {
                                 return Lottery.MaterialObject.join(aid, response.data.title, response.data.typeB).then(() => Lottery.MaterialObject.check(aid + 1, true), () => Lottery.MaterialObject.check(aid + 1, true));
@@ -1826,6 +1851,7 @@
                                 p.resolve();
                             }, (obj.join_end_time - ts_s() + 1) * 1e3);
                         } else {
+                            if (response.msg === 'timeout') return Lottery.MaterialObject.draw(obj);
                             window.toast('[自动抽奖][实物抽奖]"' + obj.title + '"(aid=' + obj.aid + ',number=' + obj.number + ')' + response.msg, 'caution');
                         }
                     }, () => {
@@ -1849,6 +1875,7 @@
                                 }
                             });
                         } else {
+                            if (response.msg === 'timeout') return Lottery.MaterialObject.notice(obj);
                             window.toast('[自动抽奖][实物抽奖]抽奖"' + obj.title + '"(aid=' + obj.aid + ',number=' + obj.number + ')' + response.msg, 'caution');
                         }
                     }, () => {
