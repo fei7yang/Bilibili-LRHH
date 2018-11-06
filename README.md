@@ -1,7 +1,6 @@
 # Bilibili直播间挂机助手/Bilibili-LRHH/BLRHH
 
-![ECMAScript 5](https://img.shields.io/badge/ECMAScript_5-unsupport-red.svg?longCache=true) ![ECMAScript 6](https://img.shields.io/badge/ECMAScript_6-pass-green.svg?longCache=true) ![TamperMonkey 4.6](https://img.shields.io/badge/TamperMonkey_4.6-pass-green.svg?longCache=true) ![Chromium 67](https://img.shields.io/badge/Chromium_67-pass-green.svg?longCache=true) ![Firefox 61](https://img.shields.io/badge/Firefox_61-pass-green.svg?longCache=true)
- [![Issues](https://img.shields.io/github/issues/SeaLoong/Bilibili-LRHH.svg)](https://github.com/SeaLoong/Bilibili-LRHH/issues)
+![ECMAScript 5](https://img.shields.io/badge/ECMAScript_5-unsupport-red.svg?longCache=true) ![ECMAScript 6](https://img.shields.io/badge/ECMAScript_6-pass-green.svg?longCache=true) ![TamperMonkey 4.8](https://img.shields.io/badge/TamperMonkey_4.7-pass-green.svg?longCache=true) ![Chromium 69](https://img.shields.io/badge/Chromium_69-pass-green.svg?longCache=true) ![Firefox 63](https://img.shields.io/badge/Firefox_61-pass-green.svg?longCache=true) [![Issues](https://img.shields.io/github/issues/SeaLoong/Bilibili-LRHH.svg)](https://github.com/SeaLoong/Bilibili-LRHH/issues)
 
 > 该脚本为TamperMonkey脚本，只在该环境下测试通过，使用其它脚本插件来加载此脚本的，不能保证正常运行  
 > 当脚本无法正常运行时，请把广告拦截插件关闭后重试
@@ -12,6 +11,7 @@
 1. 见[GreasyFork](https://greasyfork.org/zh-CN) 首页说明
 2. 进入[Bilibili直播间挂机助手](https://greasyfork.org/zh-CN/scripts/37095-bilibili%E7%9B%B4%E6%92%AD%E9%97%B4%E6%8C%82%E6%9C%BA%E5%8A%A9%E6%89%8B)页面，点击"安装此脚本"即可从GreasyFork更新此脚本
 3. 或者点击[Bilibili直播间挂机助手](https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/Bilibili%E7%9B%B4%E6%92%AD%E9%97%B4%E6%8C%82%E6%9C%BA%E5%8A%A9%E6%89%8B.js)，将代码复制下来。然后从脚本管理器中新建一个脚本，将自动生成的内容删除，粘贴复制的代码即可从Github更新此脚本
+4. 进入直播间页面，右下角多出个"挂机助手设置"，选择自己需要的功能，保存刷新即可
 
 -----------------
 
@@ -30,8 +30,36 @@
 
 -----------------
 
+## 说明
++ 自动抽奖功能大多是基于广播的，如果广播不会通知(比如其他房间的舰长)，则不会参加对应的抽奖
+
+-----------------
+
+## 常见问题
+1. OCRAD初始化失败/脚本需要加载很久(启用自动领取瓜子后)
+    + 尝试替换脚本require源
+    ```JavaScript
+    greasyfork源
+    // @require      https://greasyfork.org/scripts/38140-bilibiliapi/code/BilibiliAPI.js
+    // @require      https://greasyfork.org/scripts/44866-ocrad/code/OCRAD.js
+    ```
+    ```JavaScript
+    github源
+    // @require      https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/BilibiliAPI.js
+    // @require      https://raw.githubusercontent.com/antimatter15/ocrad.js/master/ocrad.js
+    ```
+    + 在代码中找到上面两段代码中的一段，替换为另一段，然后刷新页面试试
+2. 开启自动抽奖后，直播间页面经常崩溃
+    + 在设置中找到"刷新间隔"，设置为一个合适的数值
+    + 这个情况目前暂无更好的解决方法
+3. 可以领取瓜子却显示"今日已领完"
+    + 我也不知道啊QWQ，清理下缓存试试
+4. 自动抽奖功能不能正常运行
+    + 关闭广告拦截插件试试
+
+-----------------
+
 ## 注意事项/关于反馈
-    挂在直播间过久极有可能导致页面崩溃(吃内存过多)
     开启自动抽奖->礼物抽奖功能后，很容易在控制台看到许多Error，这些大多是B站的脚本错误，不用理会
     要检索此脚本的控制台输出只要过滤显示带有"[BLRHH]"字样的输出即可
     在脚本代码中找到有关"DEBUGMODE"的地方，将其设置为true可在控制台输出调试信息，反馈(包括bug、B站更新等)时请带上有关信息
@@ -41,9 +69,8 @@
 ## 捐赠作者
 
 + 投喂QQ：984391132
-+ ![支付宝](https://i.loli.net/2018/08/02/5b622e36a0f41.png)  ![微信](https://i.loli.net/2018/08/02/5b622e36a1002.png)
-+ ---------↑↑↑↑↑↑↑↑支付宝↑↑↑↑↑↑↑↑------------------------↑↑↑↑↑↑↑↑微信↑↑↑↑↑↑↑↑
-+ 感谢hentaishopkeeper等5名用户的投喂
++ 支付宝 => ![支付宝二维码](https://i.loli.net/2018/11/05/5be02cd439623.png) 微信 => ![微信二维码](https://i.loli.net/2018/10/30/5bd867645d5b4.png)
++ 感谢 hentaishopkeeper, smoblk.H.E.I 等 4 名用户的支付宝投喂和 3 名用户的微信投喂
 
 -----------------
 
@@ -53,6 +80,30 @@
 -----------------
 
 ## 更新日志
+> ###  2018-11-05 (Version 2.2.3)
+>     修复了有时出现抽奖参数不正确的问题
+> ###  2018-11-04 (Version 2.2.2)
+>     优化了代码逻辑
+>     修复了重复抽奖的问题
+> ###  2018-11-03 (Version 2.2.1)
+>     修复了舰队领奖不能正常工作的问题
+>     增加了自定义监听房间数的功能
+>     优化了代码逻辑
+> ###  2018-11-03 (Version 2.2.0)
+>     修改了自动抽奖->礼物抽奖的参与方式
+>     修改了自动抽奖->舰队领奖的参与方式
+>     移除了部分设置项及其功能
+> ###  2018-11-01 (Version 2.1.3)
+>     修复了不能礼物抽奖的问题
+> ###  2018-11-01 (Version 2.1.2)
+>     修复了舰队领奖有时候会疯狂重试的问题
+> ###  2018-10-31 (Version 2.1.1)
+>     修复了脚本可以在多个直播间页面运行的问题
+>     修复了舰长奖励无法领取的问题
+> ###  2018-10-30 (Version 2.1.0)
+>     优化了重试机制
+>     增加了对四大分区都监听的功能
+>     (可能)修复了一些奇怪的bug
 > ###  2018-09-28 (Version 2.0.12)
 >     修改和移除了部分设置项
 >     提高了使用稳定性
