@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bilibili直播间挂机助手
 // @namespace    SeaLoong
-// @version      2.2.3
+// @version      2.2.6
 // @description  Bilibili直播间自动签到，领瓜子，参加抽奖，完成任务，送礼等
 // @author       SeaLoong
 // @homepageURL  https://github.com/SeaLoong/Bilibili-LRHH
@@ -100,13 +100,13 @@
                 const webSocketConstructor = WebSocket.prototype.constructor;
                 WebSocket.prototype.constructor = (url, protocols) => {
                     if (url === 'wss://broadcastlv.chat.bilibili.com/sub') return webSocketConstructor(url, protocols);
-                    throw new Error('子脚本弹幕服务器连接已拦截 by ' + NAME);
+                    throw new Error();
                 };
             } catch (err) {};
             try {
                 // 拦截直播流
                 window.fetch = () => new Promise(() => {
-                    throw new Error('子脚本直播流fetch已拦截 by ' + NAME);
+                    throw new Error();
                 });
             } catch (err) {};
             // 清空页面元素和节点
@@ -547,7 +547,7 @@
                     MOBILE_HEARTBEAT: '发送移动端心跳数据包，可以完成双端观看任务',
                     AUTO_LOTTERY: '设置是否自动参加抽奖功能，包括礼物抽奖、活动抽奖、实物抽奖<br>会占用更多资源并可能导致卡顿，且有封号风险',
                     AUTO_LOTTERY_CONFIG: {
-                        GIFT_LOTTERY: '包括小电视、摩天大楼、C位光环及其他可以通过送礼触发广播的抽奖<br>注意：由于内部实现，抽奖内置9s左右(最多接近3分钟)的延迟，与下方的延时抽奖会累加计算',
+                        GIFT_LOTTERY: '包括小电视、摩天大楼、C位光环及其他可以通过送礼触发广播的抽奖<br>内置几秒钟的延迟',
                         GIFT_LOTTERY_CONFIG: {
                             LISTEN_NUMBER: '设置在四大分区中的每一个分区监听的直播间的数量，1~5之间的一个整数<br>可能导致占用大量内存或导致卡顿',
                             REFRESH_INTERVAL: '设置页面自动刷新的时间间隔，设置为0则不启用，单位为分钟<br>太久导致页面崩溃将无法正常运行脚本'
@@ -559,7 +559,7 @@
                         }
                     },
                     AUTO_GIFT_CONFIG: {
-                        ROOMID: '送礼物的直播间ID(即地址中live.bilibili.com/后面的数字), 设置为0则不送礼，小于0也视为0',
+                        ROOMID: '送礼物的直播间ID(即地址中live.bilibili.com/后面的数字), 设置为0则不送礼，小于0也视为0<br>只有在当前直播间和设置的直播间相同时才会送礼',
                         GIFT_DEFAULT: () => ('设置默认送的礼物类型编号，多个请用英文逗号(,)隔开，为空则表示默认不送出礼物<br>' + Info.gift_list_str),
                         GIFT_ALLOWED: () => ('设置允许送的礼物类型编号(任何未在此列表的礼物一定不会被送出!)，多个请用英文逗号(,)隔开，为空则表示允许送出所有类型的礼物<br><br>' + Info.gift_list_str),
                         SEND_TODAY: '送出包裹中今天到期的礼物(会送出"默认礼物类型"之外的礼物，若今日亲密度已满则不送)'
@@ -1161,7 +1161,8 @@
                         }
                     }
                     if (Task.MobileHeartbeat) Task.MobileHeartbeat = false;
-                    const func = (response) => {
+                    API.i.taskInfo().then((response) => {
+                        DEBUG('Task.run: API.i.taskInfo', response);
                         for (const key in response.data) {
                             if (typeof response.data[key] === 'object') {
                                 if (response.data[key].task_id && response.data[key].status === 1) {
@@ -1169,9 +1170,7 @@
                                 } else if (response.data[key].task_id === 'double_watch_task' && response.data[key].status === 2) Task.double_watch_task = true;
                             }
                         }
-                    };
-                    window.toast('[自动完成任务]检查任务完成情况', 'info');
-                    API.i.taskInfo().then(func).then(() => {
+                    }).always(() => {
                         CACHE.task_ts = ts_ms();
                         Essential.Cache.save();
                         Task.run_timer = setTimeout(Task.run, Task.interval);
@@ -1241,7 +1240,7 @@
             },
             run: () => {
                 try {
-                    if (!CONFIG.AUTO_GIFT || (CONFIG.AUTO_GIFT && CONFIG.AUTO_GIFT_CONFIG.ROOMID <= 0)) return;
+                    if (!CONFIG.AUTO_GIFT || (CONFIG.AUTO_GIFT && CONFIG.AUTO_GIFT_CONFIG.ROOMID > 0 && CONFIG.AUTO_GIFT_CONFIG.ROOMID !== Info.short_id && CONFIG.AUTO_GIFT_CONFIG.ROOMID !== Info.roomid)) return;
                     if (Gift.run_timer) clearTimeout(Gift.run_timer);
                     if (CACHE.gift_ts) {
                         const diff = ts_ms() - new Date(CACHE.gift_ts);
@@ -1719,6 +1718,7 @@
 
         const Lottery = {
             wsList: [],
+            createCount: 0,
             Gift: {
                 _join: (roomid, raffleId) => {
                     try {
@@ -1812,9 +1812,10 @@
                 },
                 check: (aid, valid = false) => {
                     aid = parseInt(aid || (CACHE.last_aid), 10);
-                    if (isNaN(aid)) aid = 185;
+                    if (isNaN(aid)) aid = 216;
                     DEBUG('Lottery.MaterialObject.check: aid=', aid);
                     return API.Lottery.MaterialObject.getStatus(aid).then((response) => {
+                        DEBUG('Lottery.MaterialObject.check: API.Lottery.MaterialObject.getStatus', response);
                         if (response.code === 0) {
                             if (CONFIG.AUTO_LOTTERY_CONFIG.MATERIAL_OBJECT_LOTTERY_CONFIG.IGNORE_QUESTIONABLE_LOTTERY && Lottery.MaterialObject.ignore_keyword.some(v => response.data.title.toLowerCase().indexOf(v) > -1)) {
                                 window.toast('[自动抽奖][实物抽奖]忽略抽奖(aid=' + aid + ')', 'info');
@@ -1933,6 +1934,7 @@
                 }
             },
             create: (roomid, real_roomid, type, link_url) => {
+                if (Lottery.createCount > 50) window.location.reload(true);
                 if (!real_roomid) real_roomid = roomid;
                 // roomid过滤，防止创建多个同样roomid的iframe
                 if (window[NAME].Lottery.iframeList.some(v => v.roomid === real_roomid)) return;
@@ -1960,9 +1962,10 @@
                     }
                 };
                 window[NAME].Lottery.iframeList.push(iframe);
+                ++Lottery.createCount;
                 DEBUG('Lottery.create: iframe', iframe);
             },
-            listen: (uid, roomid, area = '', debugall = false) => {
+            listen: (uid, roomid, area = '', onlyguard = false, debugall = false) => {
                 let ws = new API.DanmuWebSocket(uid, roomid);
                 Lottery.wsList.push(ws);
                 ws.bind((newws) => {
@@ -1991,15 +1994,24 @@
                                 case 2:
                                 case 8:
                                     // 礼物抽奖
+                                    if (onlyguard) break;
                                     if (!CONFIG.AUTO_LOTTERY_CONFIG.GIFT_LOTTERY) break;
                                     if (Info.blocked || !obj.roomid || !obj.real_roomid) break;
-                                    if (obj.real_roomid !== Info.roomid) Lottery.create(obj.roomid, obj.real_roomid, 'LOTTERY', obj.link_url);
+                                    if (obj.real_roomid !== Info.roomid) {
+                                        const p = $.Deferred();
+                                        p.then(() => Lottery.create(obj.roomid, obj.real_roomid, 'LOTTERY', obj.link_url));
+                                        setTimeout(p.resolve, Math.random() * 1e4);
+                                    }
                                     break;
                                 case 3:
                                     // 舰队领奖
                                     if (!CONFIG.AUTO_LOTTERY_CONFIG.GUARD_AWARD) break;
                                     if (Info.blocked || !obj.roomid || !obj.real_roomid) break;
-                                    if (obj.real_roomid !== Info.roomid) Lottery.create(obj.roomid, obj.real_roomid, 'GUARD', obj.link_url);
+                                    if (obj.real_roomid !== Info.roomid) {
+                                        const p = $.Deferred();
+                                        p.then(() => Lottery.create(obj.roomid, obj.real_roomid, 'GUARD', obj.link_url));
+                                        setTimeout(p.resolve, Math.random() * 1e4);
+                                    }
                                     break;
                                 case 4:
                                     // 登船
@@ -2020,12 +2032,14 @@
                             break;
                         case 'RAFFLE_START':
                         case 'TV_START':
+                            if (onlyguard) break;
                             DEBUG('DanmuWebSocket' + area + '(' + roomid + ')', str);
                             if (!CONFIG.AUTO_LOTTERY_CONFIG.GIFT_LOTTERY) break;
                             if (Info.blocked || !obj.data.msg.real_roomid || !obj.data.raffleId) break;
                             if (obj.data.msg.real_roomid === Info.roomid) Lottery.Gift._join(Info.roomid, obj.data.raffleId);
                             break;
                         case 'SPECIAL_GIFT':
+                            if (onlyguard) break;
                             DEBUG('DanmuWebSocket' + area + '(' + roomid + ')', str);
                             if (obj.data['39']) {
                                 switch (obj.data['39'].action) {
@@ -2037,6 +2051,7 @@
                             };
                             break;
                         default:
+                            if (onlyguard) break;
                             if (debugall) DEBUG('DanmuWebSocket' + area + '(' + roomid + ')', str);
                             break;
                     }
@@ -2057,18 +2072,21 @@
                     window[NAME].Lottery = {
                         iframeList: [] // 记录已经创建的iframe
                     };
-                    Lottery.listen(Info.uid, Info.roomid, '', true);
+                    Lottery.listen(Info.uid, Info.roomid, '', false, true);
                     const areas = ['[娱乐区]', '[游戏区]', '[手游区]', '[绘画区]'];
-                    for (let i = 1; i < 5; i++) {
+                    for (let i = 1; i < 5; ++i) {
                         API.room.getRoomList(i, 0, 0, 1, CONFIG.AUTO_LOTTERY_CONFIG.GIFT_LOTTERY_CONFIG.LISTEN_NUMBER).then((response) => {
                             DEBUG('Lottery.run: API.room.getRoomList', response);
                             if (response.code === 0) {
-                                for (const obj of response.data) {
-                                    Lottery.listen(Info.uid, obj.roomid, areas[i - 1]);
+                                for (let j = 0; j < response.data.length; ++j) {
+                                    Lottery.listen(Info.uid, response.data[j].roomid, areas[i - 1], j);
                                 }
                             }
                         });
                     }
+                    setInterval(() => {
+                        if (Lottery.createCount > 0) --Lottery.createCount;
+                    }, 10e3);
                     if (CONFIG.AUTO_LOTTERY_CONFIG.GIFT_LOTTERY_CONFIG.REFRESH_INTERVAL > 0) {
                         setTimeout(() => {
                             window.location.reload(true);
