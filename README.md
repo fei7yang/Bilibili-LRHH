@@ -76,11 +76,6 @@
 
 -----------------
 
-## 捐赠作者
-
-+ 支付宝 => ![支付宝二维码](https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/AliPay2.png) 微信 => ![微信二维码](https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/WeChat2.png)
-
------------------
 
 ## 许可证
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg?longCache=true)](https://github.com/SeaLoong/Bilibili-LRHH/blob/master/LICENSE)
