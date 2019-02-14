@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bilibili直播间挂机助手
 // @namespace    SeaLoong
-// @version      2.3.4
+// @version      2.3.6
 // @description  Bilibili直播间自动签到，领瓜子，参加抽奖，完成任务，送礼等
 // @author       SeaLoong
 // @homepageURL  https://github.com/SeaLoong/Bilibili-LRHH
@@ -10,7 +10,7 @@
 // @downloadURL  https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/Bilibili%E7%9B%B4%E6%92%AD%E9%97%B4%E6%8C%82%E6%9C%BA%E5%8A%A9%E6%89%8B.js
 // @include      /https?:\/\/live\.bilibili\.com\/\d+\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/blanc\d+\??.*/
-// @include      /https?:\/\/api\.live\.bilibili\.com\/BLRHH/
+// @include      /https?:\/\/api\.live\.bilibili\.com\/_.*/
 // @require      https://code.jquery.com/jquery-3.3.1.min.js
 // @require      https://js-1258131272.file.myqcloud.com/BilibiliAPI-1.3.4.js
 // @require      https://js-1258131272.file.myqcloud.com/OCRAD.min.js
@@ -38,7 +38,7 @@
     'use strict';
 
     const NAME = 'BLRHH';
-    const VERSION = '2.3.4';
+    const VERSION = '2.3.6';
     document.domain = 'bilibili.com';
 
     let API;
@@ -1538,6 +1538,9 @@
                             CACHE.treasure_box_ts = ts_ms();
                             Essential.Cache.save();
                             runTommorrow(TreasureBox.run);
+                        } else if (response.code === -500) {
+                            // 请先登录!
+                            window.location.reload();
                         } else {
                             window.toast('[自动领取瓜子]' + response.msg, 'caution');
                             return TreasureBox.run();
@@ -1854,25 +1857,24 @@
                         return $.Deferred().reject();
                     }
                 },
-                check: (aid, valid = false) => {
+                check: (aid, valid = 289, rem = 9) => {
                     aid = parseInt(aid || (CACHE.last_aid), 10);
-                    if (isNaN(aid)) aid = 229; // TODO
+                    if (isNaN(aid)) aid = valid;
                     DEBUG('Lottery.MaterialObject.check: aid=', aid);
                     return API.Lottery.MaterialObject.getStatus(aid).then((response) => {
                         DEBUG('Lottery.MaterialObject.check: API.Lottery.MaterialObject.getStatus', response);
                         if (response.code === 0) {
                             if (CONFIG.AUTO_LOTTERY_CONFIG.MATERIAL_OBJECT_LOTTERY_CONFIG.IGNORE_QUESTIONABLE_LOTTERY && Lottery.MaterialObject.ignore_keyword.some(v => response.data.title.toLowerCase().indexOf(v) > -1)) {
                                 // window.toast('[自动抽奖][实物抽奖]忽略抽奖(aid=' + aid + ')', 'info');
-                                return Lottery.MaterialObject.check(aid + 1, true);
+                                return Lottery.MaterialObject.check(aid + 1, aid);
                             } else {
-                                return Lottery.MaterialObject.join(aid, response.data.title, response.data.typeB).then(() => Lottery.MaterialObject.check(aid + 1, true), () => Lottery.MaterialObject.check(aid + 1, true));
+                                return Lottery.MaterialObject.join(aid, response.data.title, response.data.typeB).always(() => {
+                                    Lottery.MaterialObject.check(aid + 1, aid);
+                                });
                             }
                         } else if (response.code === -400) { // 活动不存在
-                            if (valid) {
-                                return $.Deferred().resolve(aid - 1);
-                            } else {
-                                return Lottery.MaterialObject.check(aid - 1, valid);
-                            }
+                            if (rem) return Lottery.MaterialObject.check(aid + 1, valid, rem - 1);
+                            return $.Deferred().resolve(valid);
                         } else {
                             window.toast('[自动抽奖][实物抽奖]' + response.msg, 'info');
                         }
@@ -2131,13 +2133,13 @@
                         return;
                     }
                     Lottery.listen(Info.uid, Info.roomid, '', false, true);
-                    const areas = ['[娱乐区]', '[游戏区]', '[手游区]', '[绘画区]'];
-                    for (let i = 1; i < 5; ++i) {
-                        API.room.getRoomList(i, 0, 0, 1, CONFIG.AUTO_LOTTERY_CONFIG.GIFT_LOTTERY_CONFIG.LISTEN_NUMBER).then((response) => {
+                    const areas = ['[娱乐区]', '[网游区]', '[手游区]', '[绘画区]', '[电台区]', '[单机区]'];
+                    for (let i = 0; i < areas.length; ++i) {
+                        API.room.getRoomList(i + 1, 0, 0, 1, CONFIG.AUTO_LOTTERY_CONFIG.GIFT_LOTTERY_CONFIG.LISTEN_NUMBER).then((response) => {
                             DEBUG('Lottery.run: API.room.getRoomList', response);
                             if (response.code === 0) {
                                 for (let j = 0; j < response.data.length; ++j) {
-                                    Lottery.listen(Info.uid, response.data[j].roomid, areas[i - 1], j);
+                                    Lottery.listen(Info.uid, response.data[j].roomid, areas[i], j);
                                 }
                             }
                         });
@@ -2159,8 +2161,9 @@
 
         const createIframe = (url, type, name) => {
             const iframe = $('<iframe style="display: none;"></iframe>')[0];
-            if (!name) iframe.name = '_' + Math.floor(Math.random() * 10000 + Math.random() * 1000 + Math.random() * 100 + Math.random() * 10).toString(16);
-            iframe.src = url;
+            if (!name) name = '_' + Math.floor(Math.random() * 10000 + Math.random() * 1000 + Math.random() * 100 + Math.random() * 10).toString(16);
+            iframe.name = name;
+            iframe.src = url + '/' + iframe.name;
             document.body.appendChild(iframe);
             const p = $.Deferred();
             p.then(() => {
@@ -2327,7 +2330,7 @@
             // 每天一次
             if (CONFIG.AUTO_SIGN) Sign.run();
             if (CONFIG.SILVER2COIN) Exchange.run();
-            if (CONFIG.AUTO_GROUP_SIGN || CONFIG.AUTO_DAILYREWARD) createIframe('//api.live.bilibili.com/' + NAME, 'GROUPSIGN|DAILYREWARD');
+            if (CONFIG.AUTO_GROUP_SIGN || CONFIG.AUTO_DAILYREWARD) createIframe('//api.live.bilibili.com', 'GROUPSIGN|DAILYREWARD');
             // 每过一定时间一次
             if (CONFIG.AUTO_TASK) Task.run();
             if (CONFIG.AUTO_GIFT) Gift.run();

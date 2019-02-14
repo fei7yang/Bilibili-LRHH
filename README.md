@@ -33,6 +33,7 @@
 
 ## 说明
 + 自动抽奖功能大多是基于广播的，如果广播不会通知(比如其他房间的舰长)，则不会参加对应的抽奖
++ 在TamperMonkey脚本设置中需要将此脚本的设置“仅在顶层页面（框架）运行”设置为否(默认为否)才能正常运行此脚本的一些功能
 
 -----------------
 
@@ -40,20 +41,22 @@
 1. OCRAD初始化失败/脚本需要加载很久/不能正常使用
     + 尝试替换脚本require源
     + 在代码中找到以下几段代码中的一段，替换为其他的一段，然后刷新页面试试
-     ```js
-    [greasyfork源]
-    // @require      https://greasyfork.org/scripts/38140-bilibiliapi/code/BilibiliAPI.js
-    // @require      https://greasyfork.org/scripts/44866-ocrad/code/OCRAD.js
-    [github源]
-    // @require      https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/BilibiliAPI.js
-    // @require      https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/OCRAD.min.js
-    [gitee源]
-    // @require      https://gitee.com/SeaLoong/Bilibili-LRHH/raw/master/BilibiliAPI.js
-    // @require      https://gitee.com/SeaLoong/Bilibili-LRHH/raw/master/OCRAD.min.js
-    [腾讯云源]
-    // @require      https://js-1258131272.file.myqcloud.com/BilibiliAPI-1.3.4.js
-    // @require      https://js-1258131272.file.myqcloud.com/OCRAD.min.js
-    ```
+
+        ```js
+        [greasyfork源]
+        // @require      https://greasyfork.org/scripts/38140-bilibiliapi/code/BilibiliAPI.js
+        // @require      https://greasyfork.org/scripts/44866-ocrad/code/OCRAD.js
+        [github源]
+        // @require      https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/BilibiliAPI.js
+        // @require      https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/OCRAD.min.js
+        [gitee源]
+        // @require      https://gitee.com/SeaLoong/Bilibili-LRHH/raw/master/BilibiliAPI.js
+        // @require      https://gitee.com/SeaLoong/Bilibili-LRHH/raw/master/OCRAD.min.js
+        [腾讯云源]
+        // @require      https://js-1258131272.file.myqcloud.com/BilibiliAPI-1.3.4.js
+        // @require      https://js-1258131272.file.myqcloud.com/OCRAD.min.js
+        ```
+
 2. 开启自动抽奖后，直播间页面经常崩溃
     + 在设置中找到"刷新间隔"，设置为一个合适的数值
     + 这个情况目前暂无更好的解决方法
@@ -75,7 +78,7 @@
 
 ## 捐赠作者
 
-+ 支付宝 => ![支付宝二维码](https://i.loli.net/2018/11/05/5be02cd439623.png) 微信 => ![微信二维码](https://i.loli.net/2018/10/30/5bd867645d5b4.png)
++ 支付宝 => ![支付宝二维码](https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/AliPay2.png) 微信 => ![微信二维码](https://raw.githubusercontent.com/SeaLoong/Bilibili-LRHH/master/WeChat2.png)
 
 -----------------
 
@@ -85,9 +88,14 @@
 -----------------
 
 ## 更新日志
+> ###  2019-02-14 (Version 2.3.6)
+>     修复了一处因Cookie过期导致无限重试的问题
+>     优化了实物抽奖穷举算法
+> ###  2019-02-13 (Version 2.3.5)
+>     增加了新的分区支持
 > ###  2018-12-15 (Version 2.3.4)
-> ###  2018-12-4 (Version 2.3.3)
-> ###  2018-12-1 (Version 2.3.2)
+> ###  2018-12-04 (Version 2.3.3)
+> ###  2018-12-01 (Version 2.3.2)
 > ###  2018-11-27 (Version 2.3.1)
 >     修复了一些逻辑问题
 > ###  2018-11-26 (Version 2.3.0)
